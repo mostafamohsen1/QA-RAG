@@ -1,0 +1,82 @@
+[
+  {
+    "id": "q1",
+    "question": "What is retrieval-augmented generation and what problem does it solve?",
+    "expected_answer": "RAG combines a retriever with a generative LLM so answers are grounded in an external knowledge source, reducing hallucinations on facts the model was not trained on.",
+    "expected_doc": "rag_notes.pdf",
+    "expected_page": 1,
+    "kind": "grounded"
+  },
+  {
+    "id": "q2",
+    "question": "What chunk size and overlap does the spec recommend?",
+    "expected_answer": "Chunk size of about 1000 characters with 100-200 characters of overlap so context is not split mid-idea.",
+    "expected_doc": "rag_notes.pdf",
+    "expected_page": 1,
+    "kind": "grounded"
+  },
+  {
+    "id": "q3",
+    "question": "Which embedding model is used and what is its dimension?",
+    "expected_answer": "BAAI/bge-small-en-v1.5 with 384 dimensions, run on CPU with fastembed/ONNX.",
+    "expected_doc": "rag_notes.pdf",
+    "expected_page": 2,
+    "kind": "grounded"
+  },
+  {
+    "id": "q4",
+    "question": "What index does pgvector use for approximate nearest neighbor search and which distance is optimized?",
+    "expected_answer": "HNSW index optimizing cosine similarity distance.",
+    "expected_doc": "rag_notes.pdf",
+    "expected_page": 2,
+    "kind": "grounded"
+  },
+  {
+    "id": "q5",
+    "question": "How does the reranker improve retrieval quality?",
+    "expected_answer": "A cross-encoder like ms-marco-MiniLM jointly reads the query and each candidate chunk and rescores them, which is more accurate than bi-encoder similarity used to fetch candidates.",
+    "expected_doc": "rag_notes.pdf",
+    "expected_page": 2,
+    "kind": "grounded"
+  },
+  {
+    "id": "q6",
+    "question": "What should the system do when the retrieved context does not contain the answer?",
+    "expected_answer": "It must abstain and say it does not know based on the provided documents instead of hallucinating.",
+    "expected_doc": "rag_notes.pdf",
+    "expected_page": 3,
+    "kind": "grounded"
+  },
+  {
+    "id": "q7",
+    "question": "Which evaluation metrics are defined for the RAG system?",
+    "expected_answer": "RetrievalHit@k, MRR, context precision and recall against labeled contexts, plus faithfulness via LLM-as-judge.",
+    "expected_doc": "rag_notes.pdf",
+    "expected_page": 3,
+    "kind": "grounded"
+  },
+  {
+    "id": "q8",
+    "question": "What is the quantum flux capacity of the hyperdrive?",
+    "expected_answer": "I don't know based on the provided documents.",
+    "expected_doc": null,
+    "expected_page": null,
+    "kind": "abstain"
+  },
+  {
+    "id": "q9",
+    "question": "List the 1998 quarterly revenue figures of the company in dollars.",
+    "expected_answer": "I don't know based on the provided documents.",
+    "expected_doc": null,
+    "expected_page": null,
+    "kind": "abstain"
+  },
+  {
+    "id": "q10",
+    "question": "What is the capital of France?",
+    "expected_answer": "I don't know based on the provided documents.",
+    "expected_doc": null,
+    "expected_page": null,
+    "kind": "abstain"
+  }
+]

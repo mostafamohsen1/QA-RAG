@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document QA — RAG</title>
+<style>
+  :root{--bg:#0f1117;--panel:#171a23;--panel2:#1e2230;--border:#2a3040;--text:#e8eaf0;
+        --dim:#9aa3b5;--accent:#5b8cff;--accent2:#8a63ff;--ok:#3ecf8e;--warn:#ffb454;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font:15px/1.5 system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;overflow:hidden}
+  aside{width:280px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+  aside h1{font-size:16px;padding:16px;border-bottom:1px solid var(--border)}
+  aside h1 span{color:var(--accent)}
+  .upload{padding:14px 16px;border-bottom:1px solid var(--border)}
+  .upload input{display:none}
+  .upload label{display:block;text-align:center;padding:10px;border:1px dashed var(--border);border-radius:8px;cursor:pointer;color:var(--dim)}
+  .upload label:hover{border-color:var(--accent);color:var(--accent)}
+  #doclist{flex:1;overflow-y:auto;padding:8px}
+  .doc{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;font-size:13px}
+  .doc:hover{background:var(--panel2)}
+  .doc .meta{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dim);font-size:12px}
+  .doc button{background:none;border:none;color:var(--dim);cursor:pointer;padding:2px 6px}
+  .doc button:hover{color:#ff6b6b}
+  .doc input[type=checkbox]{accent-color:var(--accent);flex-shrink:0}
+  main{flex:1;display:flex;flex-direction:column;min-width:0}
+  #msgs{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
+  .msg{max-width:760px;width:100%;margin:0 auto}
+  .msg .who{font-size:12px;color:var(--dim);margin-bottom:4px}
+  .msg .bubble{padding:12px 14px;border-radius:12px;white-space:pre-wrap}
+  .msg.user .bubble{background:var(--panel2);border:1px solid var(--border)}
+  .msg.bot .bubble{background:linear-gradient(135deg,#1c2438,#1c1f34);border:1px solid #2e3a5e}
+  .cite{display:inline-block;background:var(--accent);color:#fff;border-radius:5px;font-size:11px;padding:0 5px;margin:0 1px;cursor:pointer;vertical-align:1px}
+  .cites{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+  .cites button{background:var(--panel2);border:1px solid var(--border);color:var(--dim);border-radius:6px;font-size:12px;padding:3px 8px;cursor:pointer}
+  .cites button:hover{color:var(--accent);border-color:var(--accent)}
+  form{display:flex;gap:10px;padding:14px 20px;border-top:1px solid var(--border);background:var(--panel)}
+  form .inner{max-width:760px;width:100%;margin:0 auto;display:flex;gap:10px}
+  #q{flex:1;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:15px;outline:none}
+  #q:focus{border-color:var(--accent)}
+  #send{background:#2f66e0;border:none;color:#fff;border-radius:10px;padding:0 20px;cursor:pointer;font-size:15px;font-weight:600}
+  #send:disabled{opacity:.5;cursor:wait}
+  #drawer{position:fixed;top:0;right:-420px;width:400px;max-width:92vw;height:100vh;background:var(--panel);border-left:1px solid var(--border);transition:right .25s;z-index:10;display:flex;flex-direction:column}
+  #drawer.open{right:0}
+  #drawer header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border)}
+  #drawer header button{background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer}
+  #cbody{overflow-y:auto;padding:14px 16px;font-size:14px}
+  #cbody .src{color:var(--accent);font-size:12px;margin-bottom:6px}
+  #cbody .txt{color:var(--dim);background:var(--panel2);border-radius:8px;padding:10px;font-size:13px;white-space:pre-wrap}
+  .mode-badge{margin-top:8px;font-size:11px;color:var(--warn);background:rgba(255,180,84,.08);border:1px solid rgba(255,180,84,.3);border-radius:6px;padding:3px 8px;display:inline-block}
+  .bubble.error{border-color:rgba(255,107,107,.4);color:#ffb3b3}
+  #status{padding:6px 20px;font-size:12px;color:var(--dim);text-align:center;min-height:24px}
+  #backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:9}
+  #backdrop.show{display:block}
+  @media(max-width:640px){
+    aside{position:fixed;left:-300px;z-index:11;transition:left .25s;height:100vh;width:280px}
+    aside.open{left:0}
+    #burger{display:block!important}
+  }
+  #burger{display:none;background:none;border:none;color:var(--text);font-size:20px;padding:10px 14px;cursor:pointer}
+  .hdr-btn{display:none;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:13px;padding:6px 12px;cursor:pointer;margin-right:12px}
+  .hdr-btn:hover{border-color:var(--accent);color:var(--accent)}
+  @media(max-width:640px){.hdr-btn{display:block}}
+</style>
+</head>
+<body>
+<aside id="sidebar">
+  <h1>📄 Doc <span>QA</span></h1>
+  <div class="upload">
+    <label for="file">＋ Upload PDF / DOCX / TXT / MD</label>
+    <input type="file" id="file" accept=".pdf,.docx,.txt,.md">
+  </div>
+  <div id="doclist"></div>
+</aside>
+<main>
+  <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
+    <div style="display:flex;align-items:center">
+      <button id="burger" aria-label="Open documents">☰</button>
+      <div style="font-size:13px;color:var(--dim);padding:10px 0" id="modelinfo">local RAG · bge-small + MiniLM reranker</div>
+    </div>
+    <button id="uploadBtn" class="hdr-btn">＋ Upload</button>
+  </div>
+  <div id="msgs"><div class="msg bot"><div class="who">assistant</div><div class="bubble">Upload documents in the sidebar, then ask a question. Answers include clickable citations [n].</div></div></div>
+  <div id="status"></div>
+  <form id="f"><div class="inner">
+    <input id="q" autocomplete="off" placeholder="Ask about your documents…">
+    <button id="send">Ask</button>
+  </div></form>
+</main>
+<div id="backdrop"></div>
+<div id="drawer">
+  <header><b id="ctitle">Citation</b><button id="cclose">✕</button></header>
+  <div id="cbody"></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+let docs=[];
+async function loadDocs(){
+  docs=await (await fetch('/api/documents')).json();
+  const el=$('#doclist');el.innerHTML='';
+  docs.forEach(d=>{
+    const row=document.createElement('div');row.className='doc';
+    row.innerHTML=`<input type="checkbox" checked data-id="${d.doc_id}"><div style="flex:1;min-width:0"><div title="${d.filename}">${d.filename}</div><div class="meta">${d.n_chunks} chunks · ${d.n_pages} pages</div></div><button title="delete">🗑</button>`;
+    row.querySelector('button').onclick=async()=>{await fetch('/api/documents/'+d.doc_id,{method:'DELETE'});loadDocs();};
+    el.appendChild(row);
+  });
+  $('#modelinfo').textContent=docs.length+' document'+(docs.length===1?'':'s')+' indexed';
+}
+const uploadLabel=document.querySelector('.upload label');
+$('#uploadBtn').onclick=()=>$('#file').click();
+$('#file').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  uploadLabel.textContent='⏳ Indexing '+f.name+'…';
+  uploadLabel.style.color='';uploadLabel.style.pointerEvents='none';
+  const fail=msg=>{uploadLabel.textContent='✕ '+msg;uploadLabel.style.color='#ff8a8a';};
+  try{
+    let r=await fetch('/api/documents',{method:'POST',body:(()=>{const fd=new FormData();fd.append('file',f,f.name);return fd;})()});
+    if(!r.ok){
+      // proxy or WebView may have mangled the multipart body — retry raw bytes
+      const buf=await f.arrayBuffer();
+      r=await fetch('/api/documents?filename='+encodeURIComponent(f.name),{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:buf});
+    }
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){
+      const msg=(r.status===415)?'That file is not a recognizable PDF, DOCX, TXT or MD document.':
+                (r.status===422)?'Upload was corrupted in transit — please try again.':
+                (r.status===413)?'That file is too large (max 50 MB).':
+                'Upload failed ('+r.status+'). Please try again.';
+      fail(j.detail&&typeof j.detail==='string'?j.detail:msg);
+    }else{
+      uploadLabel.textContent=j.deduplicated?'✓ Already indexed: '+j.filename:`✓ Indexed ${j.filename}: ${j.n_chunks} chunks from ${j.n_pages} pages`;
+    }
+  }catch(err){fail('Upload failed — check your connection and try again.');}
+  uploadLabel.style.pointerEvents='';
+  setTimeout(()=>{uploadLabel.textContent='＋ Upload PDF / DOCX / TXT / MD';uploadLabel.style.color='';},6000);
+  e.target.value='';loadDocs();
+};
+$('#burger').onclick=()=>{const s=$('#sidebar');s.classList.toggle('open');};
+function openCite(c){
+  $('#ctitle').textContent=`[${c.index}] ${c.filename} — page ${c.page_number}`;
+  $('#cbody').innerHTML=`<div class="src">chunk #${c.chunk_index} · doc ${c.doc_id.slice(0,8)}</div><div class="txt">${c.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>`;
+  $('#drawer').classList.add('open');$('#backdrop').classList.add('show');
+  if(innerWidth<=640)$('#sidebar').classList.remove('open');
+}
+function closeDrawer(){$('#drawer').classList.remove('open');$('#backdrop').classList.remove('show');}
+$('#cclose').onclick=closeDrawer;$('#backdrop').onclick=closeDrawer;
+$('#f').onsubmit=async e=>{
+  e.preventDefault();
+  const q=$('#q').value.trim();if(!q)return;
+  $('#q').value='';$('#send').disabled=true;$('#send').textContent='…';$('#status').textContent='Searching your documents…';
+  const msgs=$('#msgs');
+  msgs.insertAdjacentHTML('beforeend',`<div class="msg user"><div class="who">you</div><div class="bubble"></div></div>`);
+  msgs.lastChild.querySelector('.bubble').textContent=q;
+  const sel=[...document.querySelectorAll('#doclist input:checked')].map(i=>i.dataset.id);
+  const body={question:q};if(sel.length&&sel.length<docs.length)body.doc_ids=sel;
+  try{
+    const div=document.createElement('div');div.className='msg bot';
+    div.innerHTML=`<div class="who">assistant</div><div class="bubble"></div><div class="cites"></div>`;
+    msgs.appendChild(div);
+    const bubble=div.querySelector('.bubble');
+    bubble.textContent='…';
+    const esc=t=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const renderText=text=>{
+      bubble.innerHTML=esc(text).replace(/\[(\d{1,2})\]/g,(m,n)=>{
+        const c=(lastCitations||[]).find(x=>x.index==n);
+        return c?`<span class="cite" data-i="${n}">${n}</span>`:m;
+      });
+      bubble.querySelectorAll('.cite').forEach(s=>s.onclick=()=>openCite(lastCitations.find(x=>x.index==s.dataset.i)));
+    };
+    let lastCitations=null,answerText='',extractive=false,abstained=false;
+    const r=await fetch('/api/query/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok||!r.body){
+      const friendly=(!r.ok&&r.status===422)?'Please type a question first.':((!r.ok&&r.status===503)?'The answer engine is not reachable right now. Please try again in a moment.':('Request failed ('+r.status+'). Please try again.'));
+      bubble.className='bubble error';bubble.textContent=friendly;
+      $('#status').textContent='';$('#send').disabled=false;$('#send').textContent='Ask';return;
+    }
+    const reader=r.body.getReader(),dec=new TextDecoder();
+    let buf='';
+    while(true){
+      const {done,value}=await reader.read();
+      if(done)break;
+      buf+=dec.decode(value,{stream:true});
+      let idx;
+      while((idx=buf.indexOf('\n\n'))>=0){
+        const chunk=buf.slice(0,idx);buf=buf.slice(idx+2);
+        const m=chunk.match(/^data: (.*)$/s);if(!m)continue;
+        let ev;try{ev=JSON.parse(m[1]);}catch(e){continue;}
+        if(ev.type==='citations'){
+          lastCitations=ev.citations;
+          const cites=div.querySelector('.cites');
+          ev.citations.forEach(c=>{
+            const b=document.createElement('button');
+            b.textContent=`[${c.index}] ${c.filename} p.${c.page_number}`;
+            b.onclick=()=>openCite(c);cites.appendChild(b);
+          });
+        }else if(ev.type==='token'){
+          answerText+=ev.text;renderText(answerText);
+          msgs.scrollTop=msgs.scrollHeight;
+        }else if(ev.type==='done'){
+          lastCitations=ev.citations;answerText=ev.answer;abstained=ev.abstained;
+          extractive=ev.answer_mode==='extractive';
+          renderText(answerText);
+          $('#status').textContent=abstained?'Model answered from no supporting context':'Answered with '+ev.citations.length+' citation(s)';
+        }else if(ev.type==='error'){
+          bubble.className='bubble error';bubble.textContent=ev.message;
+          $('#status').textContent='';$('#send').disabled=false;$('#send').textContent='Ask';return;
+        }
+      }
+    }
+    if(extractive){
+      const badge=document.createElement('div');
+      badge.className='mode-badge';
+      badge.textContent='⚡ extractive mode — no LLM endpoint reachable, passages quoted directly';
+      bubble.appendChild(badge);
+    }
+  }catch(err){
+    const div=document.createElement('div');div.className='msg bot';
+    div.innerHTML=`<div class="who">assistant</div><div class="bubble error">Something went wrong answering that question. Please try again in a moment — if it keeps failing, the app or its LLM endpoint may be offline.</div>`;
+    msgs.appendChild(div);
+    $('#status').textContent='';
+  }
+  $('#send').disabled=false;$('#send').textContent='Ask';msgs.scrollTop=msgs.scrollHeight;
+};
+loadDocs();
+fetch('/api/health').then(r=>r.json()).then(h=>$('#modelinfo').textContent+=' · LLM: '+h.llm_model+' ('+h.llm_provider+')').catch(()=>{});
+</script>
+</body>
+</html>
